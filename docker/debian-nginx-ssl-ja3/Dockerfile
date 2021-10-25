@@ -65,10 +65,10 @@ RUN git clone https://github.com/openssl/openssl
 # Build and install openssl
 WORKDIR /build/openssl
 
-RUN git checkout OpenSSL_1_1_1 -b patched
-COPY patches/openssl_1.1.1d.extensions.patch /build/openssl
-RUN patch -p1 < openssl_1.1.1d.extensions.patch
-RUN ./config -d
+RUN git checkout 89cd17a -b patched
+COPY patches/openssl_3.0.0.extensions.patch /build/openssl
+RUN patch -p1 < openssl_3.0.0.extensions.patch
+RUN ./config enable-ktls --libdir=/usr/local/lib -d 
 RUN make
 RUN make install
 
@@ -86,12 +86,13 @@ RUN mkdir -p /usr/local/nginx/conf/
 COPY docker/debian-nginx-ssl-ja3/nginx.conf /usr/local/nginx/conf/nginx.conf
 
 # Install self-signed certificate
-RUN LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib /usr/local/bin/openssl req -new -x509 -days 365 -nodes -out /usr/local/nginx/conf/cert.pem -keyout /usr/local/nginx/conf/rsa.key -subj "/C=PT/ST=Lisbon/L=Lisbon/O=Development/CN=foo.local"
+RUN echo '/usr/local/lib' >> /etc/ld.so.conf
+RUN ldconfig
+RUN /usr/local/bin/openssl req -new -x509 -days 365 -nodes -out /usr/local/nginx/conf/cert.pem -keyout /usr/local/nginx/conf/rsa.key -subj "/C=PT/ST=Lisbon/L=Lisbon/O=Development/CN=foo.local"
 
 # vim config
 COPY docker/debian-nginx-ssl-ja3/vimrc /etc/vim/vimrc
 
-RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib' | tee -a /root/.bashrc
 RUN echo 'export PATH=$PATH:/usr/local/bin:/usr/local/nginx/sbin' | tee -a /root/.bashrc
 RUN echo '' | tee -a /root/.bashrc
 RUN echo 'export ASAN_OPTIONS=symbolize=1' | tee -a /root/.bashrc
