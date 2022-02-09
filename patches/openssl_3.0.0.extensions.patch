@@ -1,0 +1,53 @@
+diff -upr openssl-openssl-3.0.0_orig/include/openssl/tls1.h ../openssl-openssl-3.0.0/include/openssl/tls1.h
+--- openssl-openssl-3.0.0_orig/include/openssl/tls1.h	2021-09-07 12:46:32.000000000 +0100
++++ openssl-openssl-3.0.0/include/openssl/tls1.h	2021-10-25 11:15:07.915290219 +0100
+@@ -134,6 +134,11 @@ extern "C" {
+ /* ExtensionType value from RFC7627 */
+ # define TLSEXT_TYPE_extended_master_secret      23
+ 
++/* [draft-ietf-tls-certificate-compression] */
++# define TLSEXT_TYPE_compress_certificate        27
++/* ExtensionType value from RFC8449 */
++# define TLSEXT_TYPE_record_size_limit           28
++
+ /* ExtensionType value from RFC4507 */
+ # define TLSEXT_TYPE_session_ticket              35
+ 
+diff -upr openssl-openssl-3.0.0_orig/ssl/ssl_local.h ../openssl-openssl-3.0.0/ssl/ssl_local.h
+--- openssl-openssl-3.0.0_orig/ssl/ssl_local.h	2021-09-07 12:46:32.000000000 +0100
++++ openssl-openssl-3.0.0/ssl/ssl_local.h	2021-10-25 11:17:07.894846505 +0100
+@@ -766,6 +766,8 @@ typedef enum tlsext_index_en {
+     TLSEXT_IDX_cryptopro_bug,
+     TLSEXT_IDX_early_data,
+     TLSEXT_IDX_certificate_authorities,
++    TLSEXT_IDX_compress_certificate,
++    TLSEXT_IDX_record_size_limit,
+     TLSEXT_IDX_padding,
+     TLSEXT_IDX_psk,
+     /* Dummy index - must always be the last entry */
+diff -upr openssl-openssl-3.0.0_orig/ssl/statem/extensions.c ../openssl-openssl-3.0.0/ssl/statem/extensions.c
+--- openssl-openssl-3.0.0_orig/ssl/statem/extensions.c	2021-09-07 12:46:32.000000000 +0100
++++ openssl-openssl-3.0.0/ssl/statem/extensions.c	2021-10-25 11:16:11.883054862 +0100
+@@ -368,6 +368,22 @@ static const EXTENSION_DEFINITION ext_de
+         tls_construct_certificate_authorities, NULL,
+     },
+     {
++        TLSEXT_TYPE_compress_certificate,
++        SSL_EXT_CLIENT_HELLO,
++        NULL,
++        NULL, NULL,
++        NULL,
++        NULL, NULL,
++    },
++    {
++        TLSEXT_TYPE_record_size_limit,
++        SSL_EXT_CLIENT_HELLO,
++        NULL,
++        NULL, NULL,
++        NULL,
++        NULL, NULL,
++    },
++    {
+         /* Must be immediately before pre_shared_key */
+         TLSEXT_TYPE_padding,
+         SSL_EXT_CLIENT_HELLO,
