@@ -26,6 +26,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing \
     exuberant-ctags \
     git-core \
     jq \
+    kmod \
     llvm \
     libgeoip1 \
     libgeoip-dev \
@@ -37,10 +38,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing \
     libtool \
     lsof \
     make \
-    mercurial \
     ngrep \
     procps \
-    python \
+    python3 \
     telnet \
     tcpflow \
     valgrind \
@@ -65,16 +65,17 @@ RUN git clone https://github.com/openssl/openssl
 # Build and install openssl
 WORKDIR /build/openssl
 
-RUN git checkout 89cd17a -b patched
+RUN git checkout b4e83ed -b patched
 COPY patches/openssl_3.0.0.extensions.patch /build/openssl
 RUN patch -p1 < openssl_3.0.0.extensions.patch
-RUN ./config enable-ktls --libdir=/usr/local/lib -d 
+#RUN ./config enable-ktls --libdir=/usr/local/lib -d 
+RUN ./config --libdir=/usr/local/lib -d 
 RUN make
 RUN make install
 
 # Clone from nginx
 WORKDIR /build
-RUN hg clone http://hg.nginx.org/nginx
+RUN git clone -b release-1.21.6 https://github.com/nginx/nginx
 
 # Patch nginx for fetching ssl client extensions
 WORKDIR /build/nginx
@@ -93,14 +94,17 @@ RUN /usr/local/bin/openssl req -new -x509 -days 365 -nodes -out /usr/local/nginx
 # vim config
 COPY docker/debian-nginx-ssl-ja3/vimrc /etc/vim/vimrc
 
-RUN echo 'export PATH=$PATH:/usr/local/bin:/usr/local/nginx/sbin' | tee -a /root/.bashrc
+#RUN echo 'export PATH=$PATH:/usr/local/bin:/usr/local/nginx/sbin' | tee -a /root/.bashrc
 RUN echo '' | tee -a /root/.bashrc
-RUN echo 'export ASAN_OPTIONS=symbolize=1' | tee -a /root/.bashrc
-RUN echo 'export export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer' | tee -a /root/.bashrc
+# actually tls is not supported
+#RUN echo '/sbin/modprobe tls' | tee -a /root/.bashrc
+#RUN echo 'export ASAN_OPTIONS=symbolize=1' | tee -a /root/.bashrc
+#RUN echo 'export export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer' | tee -a /root/.bashrc
 RUN echo '' | tee -a /root/.bashrc
 
 WORKDIR /build
 COPY docker/debian-nginx-ssl-ja3/compile.sh /build/compile.sh
-RUN echo 'TO COMPILE RUN:\n    cd nginx\n    ASAN_OPTIONS=symbolize=1 ./auto/configure --add-module=/build/nginx-ssl-ja3 --with-http_ssl_module --with-stream_ssl_module --with-debug --with-stream --with-cc-opt="-fsanitize=address -O -fno-omit-frame-pointer" --with-ld-opt="-L/usr/local/lib -Wl,-E -lasan"\n    make install' | tee -a /build/COMPILE.ASAN.README
+#RUN echo 'TO COMPILE RUN:\n    cd nginx\n    ASAN_OPTIONS=symbolize=1 ./auto/configure --add-module=/build/nginx-ssl-ja3 --with-http_ssl_module --with-stream_ssl_module --with-debug --with-stream --with-cc-opt="-fsanitize=address -O -fno-omit-frame-pointer" --with-ld-opt="-L/usr/local/lib -Wl,-E -lasan"\n    make install' | tee -a /build/COMPILE.ASAN.README
+RUN echo 'TO COMPILE RUN:\n    cd nginx\n    ./auto/configure --add-module=/build/nginx-ssl-ja3 --with-http_ssl_module --with-stream_ssl_module --with-debug --with-stream --with-cc-opt="-fno-omit-frame-pointer" --with-ld-opt="-L/usr/local/lib"\n    make install' | tee -a /build/COMPILE.ASAN.README
 RUN echo 'TO TEST RUN:\n    nginx &\n    openssl s_client -connect 127.0.0.1:12345 -cipher "AES128-SHA" -curves secp521r1' | tee -a /build/TEST.README
 
